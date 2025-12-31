@@ -1,2 +1,48 @@
 # 3Duino
-Use an Arduino or other microcontroller to extract the contents of 3DS cartridges without using a hacked 3DS
+Use an Arduino or other microcontroller to extract the contents of 3DS cartridges without using a hacked 3DS.
+## This guide is not yet finished, please note
+
+### Overview
+Because Nintendo is exceedingly greedy and does not want you to copy data from their game cartridges, most of the 3DS cartridge data transfer protocol is proprietary and encrypted. Still, reverse engineerers have pieced together information, though much of it seems to be incomplete. This project has pieced together the complete protocol from [GBATEK](https://problemkaputt.de/gbatek.htm#3dscartridgeregisters), [Winter Software](https://blog.winter-software.com/2024/06/02/ctr-cart-protocol), [3DBrew wiki](http://www.3dbrew.org/wiki/Gamecards), and others. It also includes two programs for Arduino language-compatible microcontrollers and for Java (any platform) to work together to obtain the cart data and put it into a runnable file for emulators such as Citra. Please do not use this for piracy. Enjoy!
+
+### Protocol overview
+The 3DS cartridge protocol (3CP) involves two parts: ROM access, and save data access. ROM access uses a proprietary encrypted protocol, whereas save data is accessed using a standard SPI protocol. For this explanation to make sense, the cartridge pinout must first be established. The following is adapted from the 3DBrew wiki:
+
+Pin	| Name | Description
+--- | ------ | ---------------
+1 |	GND	| Ground
+2 |	CLK	| Clock, active low
+3	| NC |
+4	| RCS |	ROM transfer select, active low
+5 |	RST	| Reset, active low
+6	| ECS |	Savegame transfer select, active low. 
+7	| IRQ |	Removal detection
+8 |	VCC	| Power (3.3V)
+
+
+| Pin | Name | ROM transfer mode | Savegame transfer mode
+----- | ---- | ----- | --------
+9 |	D0 |	Bidirectional data bus | NC
+10 |	D1 | Bidirectional data bus | NC
+11 |	D2 | Bidirectional data bus | NC
+12 |	D3 | Bidirectional data bus | NC
+13 |	D4	| Bidirectional data bus | NC/SIO3
+14 |	D5	| Bidirectional data bus | WP#/SIO2
+15 |	D6	| Bidirectional data bus | SO/SIO1
+16 |	D7	| Bidirectional data bus | SI/SIO0
+17 |	GND	| Ground | Ground
+
+
+#### Savegame transferring
+Savegame data is stored in a flash memory chip known as the MX25L5121E. The datasheet is linked [here](https://www.macronix.com/Lists/Datasheet/Attachments/8796/MX25L1021E,%203V,%201Mb,%20v1.3.pdf). This chip uses the SPI interface to load and save data. The following image from an online forum reveals the pin configurations:
+![Image which shows both sides of the 3DS cartridge when opened](https://gameverifying.com/user/pages/04.wiki/cart-based-systems/3ds/3dspcb.jpg)
+
+
+#### ROM transferring
+##### Overview
+This is the more complicated part. The ROM chip must first recieve commands from the controller (3DS, or, in this case, microcontroller), and it will then send information back according to the commands. There are two phases in which the information is sent: 8-byte mode, and 16-byte mode. The 8-byte mode is backwards-compatible with the much more well-documented DS protocol, and is unencrypted. This is an intentional design choice by Nintendo so that the 3DS can interact with both DS and 3DS games. The 16-byte mode is unique to the 3DS and is encrypted. The modes signify the length of the commands sent by the controller. For 8-byte mode, the commands are all 8 bytes long. For 16-byte mode, the commands are all 16 bytes, even when encrypted. Each number is sent in **big endian** order. The following guide indicates the steps of data transfer completely and in order.
+
+##### 8-byte mode
+This is when encryption keys and metadata are transferred.  
+
+

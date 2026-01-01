@@ -1,5 +1,6 @@
 # 3Duino
-Use an Arduino or other microcontroller to extract the contents of 3DS cartridges without using a hacked 3DS.
+Bit bang a 3DS cartridge using a microcontroller.
+
 ## This guide is not yet finished, please note
 
 ### Overview

@@ -1,5 +1,5 @@
 # 3Duino
-Bit bang a 3DS cartridge using a microcontroller. This is, to my knowledge, the only published attempt at programatically extracting the ROM data of a 3DS gamecard.
+Bit bang a 3DS cartridge using a microcontroller. This is, to my knowledge, the only published attempt at programatically extracting the ROM data of a 3DS gamecard. ---Massive--- thanks to nocash at problemkaputt.de for their work on deciphering the 3DS cartridge protocol. Almost all sources on the internet regarding this topic seem to eventually stem from this one site.
 
 ## This guide is not yet finished, please note
 

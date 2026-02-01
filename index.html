@@ -1,3 +1,78 @@
+<h1>Deciphering the 3DS gamecard protocol</h1>
 <p>
-  Hello, world!
+  My 3DS joystick broke. I wanted initially to repair it, whick worked, but then other problems got in the way, and eventually it became unusable. I decided that perhaps I could play my 3DS games without a physical console,
+  but instead with an emulator. To do this, I would need to obtain information from my gamecards. I also thought it would be a fun project to practice my bit-banging skills. So, without further ado, here is sufficient
+  information to read 3DS gamecards yourself!
+
+  To perform this task, the pinout of the device must be established. This can be found from numerous sites, but I will use an adaptation from 3DBrew:
+
+  <ul>
+    <li>Pin 1: Ground</li>
+    <li>Pin 2: Clock</li>
+    <li>Pin 3: Ground</li>
+    <li>Pin 4: ROM select/RCS (active low)</li>
+    <li>Pin 5: Reset (active low)</li>
+    <li>Pin 6: Save select/ECS (active low)</li>
+    <li>Pin 7: Ground</li>
+    <li>Pin 8: 3.3 volts</li>
+    <li>Pin 9: D0</li>
+    <li>Pin 10: D1</li>
+    <li>Pin 11: D2</li>
+    <li>Pin 12: D3</li>
+    <li>Pin 13: D4</li>
+    <li>Pin 14: D5</li>
+    <li>Pin 15: D6/CIPO</li>
+    <li>Pin 16: D7/COPI</li>
+    <li>Pin 17: Ground</li>
+  </ul>
+
+Note that the pins are numbered from left to right, from the perspective of the back of the card where the gold pins are when the card is upright.
 </p>
+<h3> Reading save data </h3>
+<p>
+  It appears as though save data is much easier to read than the actual ROM. This is because the chip which stores the save information is well-documented and can be bought online (datasheet <a href="https://www.macronix.com/Lists/Datasheet/Attachments/8796/MX25L1021E,%203V,%201Mb,%20v1.3.pdf">here</a>)
+  To read save data, pin 6, heretofore referred to as ECS, is pulled low. Then, the 3DS will send a command asking for data, and then the cart will respond with save information. According to 3DBrew, data pins D4 through D7 are the pins used to transmit save data. 
+  According to problemkaputt, only D6 and D7 are used. However, upon checking the datasheet, the latter is correct. To test these conflicting ideas, I hooked an Arduino up to a gamecard, set ECS to low, and sent the following commands:
+  0x03
+  0x00
+  0x00
+  0x00
+
+  The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin).
+  That wraps up the save data.
+
+  <h3> Reading ROM data </h3>
+  Please read <a href="https://www.3dbrew.org/wiki/Gamecards">this article</a> first. It gives many prerequisites to understanding the following.
+  To read the unencrypted section of the gamecard, the command: 0x9000000000000000 must be sent (supposedly). I tried sending all of the commands necessary according to 3DBrew using all 8 data pins, but never got any response data. This made me suspect that 
+  perhaps the protocol listed was simply not correct. I decided to probe the communication between the 3DS and gamecard to find out what was actually going on. Upon starting the console, the following command was sent:
+
+  <p>
+  00 00 00 00 
+  70 70 00 00 
+  00 20 00 E0 
+  00 00 00 F0 
+  E0 E0 00 00 
+  00 F0 30 70 
+  00 00 00 F0 
+  00 70 00 00 
+  00 F0 00 70 
+  00 00 00 B0 
+  00 70 00 00 
+  00 A0 00 70 
+  00 00 00 00 
+  00 00 80 00 
+  70 00 00 00 
+  80 80 F0 00 
+  00 00 A0 80 
+  70 00 00 00 
+  80 80 00
+  </p>
+
+  A few observations are notable. First, none of the commands from 3DBrew are present. Second, data bits D4 through D7 are never used. This may be why it states that all of these bits are part of the save data protocol. 
+  Perhaps we can send this to the 3DS, and see the response.
+  
+
+  
+</p>
+
+  On the website <a href="problemkaputt.de">problemkaputt.de</a>, extremely extensive information can be found about the 3DS (see <a href="https://problemkaputt.de/gbatek-3ds-reference.htm">here</a> for more information.

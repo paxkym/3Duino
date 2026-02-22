@@ -1,10 +1,15 @@
 <h1>Deciphering the 3DS gamecard protocol</h1>
+<h3>Introduction</h3>
 <p>
-  My 3DS joystick broke. I wanted initially to repair it, whick worked, but then other problems got in the way, and eventually it became unusable. I decided that perhaps I could play my 3DS games without a physical console,
-  but instead with an emulator. To do this, I would need to obtain information from my gamecards. I also thought it would be a fun project to practice my bit-banging skills. So, without further ado, here is sufficient
-  information to read 3DS gamecards yourself!
-
+  My 3DS joystick broke. I wanted initially to repair it, whick worked, but then other problems got in the way, and eventually it became unusable. Instead, I have decided to make a program which reads data from the cartridge directly and outputs it for use by an emulator. 
+  One would think that this is a simple task, but it actually is not. The useless brats at Nintendo refuse to publish any information online about the console hardware, and all of the guides that I found online (3dbrew, for example) publish total garbage information about this
+  protocol. When I tried to get the ROM protocol working as listed in the wiki, absolutely nothing worked. But, as the saying goes, 'If you want something done right, do it yourself'. Therefore, I have here shown the reverse engineered protocol as per my own experiments. Also, don't
+  use this for piracy, devaluation, crap romhacks, yadda yadda yadda. Enjoy! And please don't put this all on ChatGPT. I put hard work into making this, and for some stupid robot to come and make money for Sam Altman off of my back is totally unnacceptable.
+</p>
+  
+<p>
   To perform this task, the pinout of the device must be established. This can be found from numerous sites, but I will use an adaptation from 3DBrew:
+</p>
 
   <ul>
     <li>Pin 1: Ground</li>
@@ -42,37 +47,5 @@ Note that the pins are numbered from left to right, from the perspective of the 
   That wraps up the save data.
 
   <h3> Reading ROM data </h3>
-  Please read <a href="https://www.3dbrew.org/wiki/Gamecards">this article</a> first. It gives many prerequisites to understanding the following.
-  To read the unencrypted section of the gamecard, the command: 0x9000000000000000 must be sent (supposedly). I tried sending all of the commands necessary according to 3DBrew using all 8 data pins, but never got any response data. This made me suspect that 
-  perhaps the protocol listed was simply not correct. I decided to probe the communication between the 3DS and gamecard to find out what was actually going on. Upon starting the console, the following command was sent:
-
-  <p>
-  00 00 00 00 
-  70 70 00 00 
-  00 20 00 E0 
-  00 00 00 F0 
-  E0 E0 00 00 
-  00 F0 30 70 
-  00 00 00 F0 
-  00 70 00 00 
-  00 F0 00 70 
-  00 00 00 B0 
-  00 70 00 00 
-  00 A0 00 70 
-  00 00 00 00 
-  00 00 80 00 
-  70 00 00 00 
-  80 80 F0 00 
-  00 00 A0 80 
-  70 00 00 00 
-  80 80 00
-  </p>
-
-  A few observations are notable. First, none of the commands from 3DBrew are present. Second, data bits D4 through D7 are never used. This may be why it states that all of these bits are part of the save data protocol. 
-  Perhaps we can send this to the 3DS, and see the response.
   
-
-  
-</p>
-
-  On the website <a href="problemkaputt.de">problemkaputt.de</a>, extremely extensive information can be found about the 3DS (see <a href="https://problemkaputt.de/gbatek-3ds-reference.htm">here</a> for more information.
+  If one decides to read online about the ROM data transfer protocol, it may be concluded that this is how the 3DS gamecard protocol works: The 3DS sends some data to the gamecard, and the gamecard sends data back. 

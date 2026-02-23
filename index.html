@@ -42,10 +42,18 @@ Note that the pins are numbered from left to right, from the perspective of the 
   0x00
   0x00
   0x00
-
+  
   The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin).
   That wraps up the save data.
 
   <h3> Reading ROM data </h3>
   
-  If one decides to read online about the ROM data transfer protocol, it may be concluded that this is how the 3DS gamecard protocol works: The 3DS sends some data to the gamecard, and the gamecard sends data back. 
+  If one decides to read online about the ROM data transfer protocol, it may be concluded that this is how the 3DS gamecard protocol works: Pull pin 4 (RCS) down, and then the 3DS sends some data to the gamecard, and the gamecard sends data back. This may as well be true, but, as mentioned
+  previously, whatever protocol is listed on the sites currently on the internet does not work. So, using a bus analyzer, the following can be found (go to the "completed protocol" section if you just want to see the finished product, totally cool with me (: ):
+
+  <h5>Command structure</h5>
+  It does indeed seem as though commands are sent through D0-D7, and that commands are active when RCS is low. Moreover, the 3DS sends commands to the gamecards, and vice versa. Let us now analyze the actual commands themselves.
+
+  <h5>Initial commands</h5>
+  When the gamecard is plugged into the 3DS, regardless of which card it is (whether 3DS or DS, whether Ocarina of Time or Animal Crossing, etc), the console sends the following commands to the gamecard:
+  

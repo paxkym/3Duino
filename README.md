@@ -3,6 +3,7 @@ Bit bang a 3DS cartridge using a microcontroller. This is, to my knowledge, the 
 
 ### Usage
 > Step 1: Attach the gamecard to the microcontroller
+
 You can either solder wires directly to a gamecard, or solder wires to an existing card slot. The latter is what I did, and you can find on Ebay for about $10. If you do not wish to purchase such things, you can also desolder one from a broken 3DS or add temporary connectors to a cartridge as mentioned before.
 
 > Step 2: Set up the microcontroller
@@ -16,6 +17,18 @@ A microcontroller with at least 14 pins is needed. I used an Arduino Uno. Downlo
 * Pin 7 to GND or NC
 * Pin 8 to 3.3 volts. ***DO NOT USE 5 VOLTS!!!***
 * Pin 9 to D6 (Data pins can be 5 volts or 3.3)
-* 
+* Pin 10 to D6
+* Pin 11 to D7
+* Pin 12 to D8
+* Pin 13 to D9
+* Pin 14 to D10
+* Pin 15 to D11
+* Pin 16 to D12
+* Pin 17 to GND or NC
 
+Upload the ino file to your microcontroller.
+
+> Step 3: Set up the program
+
+Download the Java program, and use.
 

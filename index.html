@@ -1,7 +1,7 @@
 <h1>Deciphering the 3DS gamecard protocol</h1>
 <h3>Introduction</h3>
 <p>
-  My 3DS joystick broke. I wanted initially to repair it, whick worked, but then other problems got in the way, and eventually it became unusable. Instead, I have decided to make a program which reads data from the cartridge directly and outputs it for use by an emulator. 
+  My 3DS joystick broke. I wanted initially to repair it, which worked, but then other problems got in the way, and eventually it became unusable. Instead, I have decided to make a program which reads data from the cartridge directly and outputs it for use by an emulator. 
   One would think that this is a simple task, but it actually is not. The useless brats at Nintendo refuse to publish any information online about the console hardware, and all of the guides that I found online (3dbrew, for example) publish total garbage information about this
   protocol. When I tried to get the ROM protocol working as listed in the wiki, absolutely nothing worked. But, as the saying goes, 'If you want something done right, do it yourself'. Therefore, I have here shown the reverse engineered protocol as per my own experiments. Also, don't
   use this for piracy, devaluation, crap romhacks, yadda yadda yadda. Enjoy! And please don't put this all on ChatGPT. I put hard work into making this, and for some stupid robot to come and make money for Sam Altman off of my back is totally unnacceptable.
@@ -37,27 +37,32 @@ Note that the pins are numbered from left to right, from the perspective of the 
 <p>
   It appears as though save data is much easier to read than the actual ROM. This is because the chip which stores the save information is well-documented and can be bought online (datasheet <a href="https://www.macronix.com/Lists/Datasheet/Attachments/8796/MX25L1021E,%203V,%201Mb,%20v1.3.pdf">here</a>)
   To read save data, pin 6, heretofore referred to as ECS, is pulled low. Then, the 3DS will send a command asking for data, and then the cart will respond with save information. According to 3DBrew, data pins D4 through D7 are the pins used to transmit save data. 
-  According to problemkaputt, only D6 and D7 are used. However, upon checking the datasheet, the latter is correct. To test these conflicting ideas, I hooked an Arduino up to a gamecard, set ECS to low, and sent the following commands:
-  0x03
-  0x00
-  0x00
-  0x00
+  According to problemkaputt, only D6 and D7 are used. However, upon checking the datasheet, the latter is correct. To test these conflicting ideas, I hooked an Arduino up to a gamecard, set ECS to low, and sent the following command:
+  <p>0x03000000</p>
   
   The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin).
   That wraps up the save data.
-
+</p>
   <h3> Reading ROM data </h3>
-  
+  <p>
   If one decides to read online about the ROM data transfer protocol, it may be concluded that this is how the 3DS gamecard protocol works: Pull pin 4 (RCS) down, and then the 3DS sends some data to the gamecard, and the gamecard sends data back. This may as well be true, but, as mentioned
-  previously, whatever protocol is listed on the sites currently on the internet does not work. So, using a bus analyzer, the following can be found (go to the "completed protocol" section if you just want to see the finished product, totally cool with me (: ):
+  previously, whatever protocol is listed on the sites currently on the internet does not work. So, using a bus analyzer, the following can be found (go to the "completed protocol" section if you just want to see the finished product, totally cool with me):
+</p>
 
-  <h5>Command structure</h5>
+  <h4>Command structure</h4>
+  <p>
   It does indeed seem as though commands are sent through D0-D7, and that commands are active when RCS is low. Moreover, the 3DS sends commands to the gamecards, and vice versa. Let us now analyze the actual commands themselves.
+</p>
 
-  <h5>Initial commands</h5>
+  <h4>Initial commands</h4>
+  <p>
   When the gamecard is plugged into the 3DS, regardless of which card it is (whether 3DS or DS, whether Ocarina of Time or Animal Crossing, etc), the console sends the following commands to the gamecard:
+  
+  <code>
   48 51 F8 51 
   D9 90 D8 18 
   18 18
+  </code>
 
   What these commands mean is unknown
+</p>

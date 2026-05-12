@@ -31,15 +31,18 @@
     <li>Pin 17: Ground</li>
   </ul>
 
-Note that the pins are numbered from left to right, from the perspective of the back of the card where the gold pins are when the card is upright.
+Note that the pins are numbered from left to right, from the perspective of the back of the card where the gold pins are when the card is upright. Also note that all data on here is represented in hexadecimal, but will not have the conventional 0x marker at the beginning, since this makes it harder to read.
 </p>
 <h3> Reading save data </h3>
 <p>
   It appears as though save data is much easier to read than the actual ROM. This is because the chip which stores the save information is well-documented and can be bought online (datasheet <a href="https://www.macronix.com/Lists/Datasheet/Attachments/8796/MX25L1021E,%203V,%201Mb,%20v1.3.pdf">here</a>)
   To read save data, pin 6, heretofore referred to as ECS, is pulled low. Then, the 3DS will send a command asking for data, and then the cart will respond with save information. According to 3DBrew, data pins D4 through D7 are the pins used to transmit save data. 
-  According to problemkaputt, only D6 and D7 are used. However, upon checking the datasheet, the latter is correct. To test these conflicting ideas, I hooked an Arduino up to a gamecard, set ECS to low, and sent the following command:
-  <p>0x03 00 00 00</p>
-  
+  According to problemkaputt, only D6 and D7 are used. However, upon checking the datasheet, the latter is correct. To test these conflicting ideas, I hooked an Arduino up to a gamecard, set ECS to low, and sent the following commands (hexadecimal):
+  <p>00 00 00 00 00 00 01 01</p>
+  <p>00 00 00 00 00 00 00 00</p>
+  <p>00 00 00 00 00 00 00 00</p>
+  <p>00 00 00 00 00 00 00 00</p>
+
   The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin).
   That wraps up the save data.
 </p>
@@ -61,15 +64,15 @@ Note that the pins are numbered from left to right, from the perspective of the 
   <p>
   0x90
   0xC2 FA 00 98 98 98 98 90 80
-    
+  <p></p>
   0x90
   0xC2 FA 00 98 98 98 98 90 80
   0xA0 
-
+  <p></p>
   0x90
   0xC2 FA 00 98 98 98 98 90 80
   0xA0
-
+  <p></p>
   0x3A
   0xFB FF FB FB FB 82 82 82 82
 
@@ -77,5 +80,5 @@ Note that the pins are numbered from left to right, from the perspective of the 
   
   </p>
 
-  What these commands mean is unknown.
+  What these commands mean is unknown. Since they appear in the beginning of all gamecard communications, however, this shall be referred to as the Universal Start String.
 </p>

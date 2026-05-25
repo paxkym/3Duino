@@ -43,7 +43,18 @@ Note that the pins are numbered from left to right, from the perspective of the 
   <p>00 00 00 00 00 00 00 00</p>
   <p>00 00 00 00 00 00 00 00</p>
 
-  The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin).
+  The commands were sent serially, so each bit was sent through pin D7, since this is the COPI pin. Every other pin was kept at 0. Then, I ran the clock, and, sure enough, save information was sent through pin D6 (because that is the CIPO pin). However, this is not the case for all gamecards. In fact, I only had one card for which this worked. This is because the majority of 3DS gamecards actually use a different savedata chip: the <a href="https://www.alldatasheet.com/datasheet-pdf/view/142981/MCNIX/MX25L4005.html">MX25L40 (technically the 4001, specifically, but the 4005 listed here is close enough)</a>. This uses a slightly different protocol.
+  For the DS, the former protocol works. For most of our 3DS devices, pins D4-D7 are used in the following configuration:
+  <ul>
+    <li>ECS: ECS (As usual)</li>
+    <li>D4: HOLD</li>
+    <li>D5: Write protect</li>
+    <li>D6: CIPO</li>
+    <li>D7: COPI</li>
+  </ul>
+  How is this interfaced with? 
+  303030303030B0B030303030303030303030
+  303030303030303030303030303030303030
   That wraps up the save data.
 </p>
   <h3> Reading ROM data </h3>

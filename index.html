@@ -87,6 +87,43 @@ How can one possibly hope to figure out such a thing as this? First, we (I will 
 
 <br>
 <p>
-  This is very much useful because it provides a way to check if our encryption protocol is actually correct. If not, the encrypted and decrypted data will not match. 
+  This is very much useful because it provides a way to check if our encryption protocol is actually correct. If not, the encrypted and decrypted data will not match. Another useful piece of data from this site is the unencrypted header from the very cartridge that this set of commands was plucked from:
+  <pre><code>
+0000: 00 8c 03 00 00 00 04 00 00 00 00 00 00 00 00 00
+0010: b3 cf fb c6 6a b1 cb 20 32 af ce 35 d4 1c 74 c9
+0020: 8e 6b 27 2f 08 01 28 3b d4 30 de 44 37 f5 b0 46
+0030: 91 59 d7 38 33 48 df 83 fd 71 84 2c 00 00 00 00
+0040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0060: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0070: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0090: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00d0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00e0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00f0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0100: 4e 43 43 48 7a 7f 0e 00 00 8c 03 00 00 00 04 00
+0110: 36 34 02 00 00 00 00 00 00 8c 03 00 00 00 04 00
+0120: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0130: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0140: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0150: 43 54 52 2d 50 2d 41 4c 47 50 00 00 00 00 00 00
+0160: 0c 27 e3 c1 de 7b 2a e2 d3 11 4f 32 a4 ee bf 46
+0170: 9a fd 0c f3 52 c1 1d 49 84 c2 a9 f1 d2 14 4c 63
+0180: 00 04 00 00 00 00 00 00 00 00 00 00 01 03 00 00
+0190: 05 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+01a0: 06 00 00 00 1c 0a 00 00 01 00 00 00 00 00 00 00
+01b0: 22 0a 00 00 58 75 0e 00 01 00 00 00 00 00 00 00
+01c0: 13 0c 04 26 15 f6 47 c4 c6 32 25 ea 9e 67 f8 a2
+01d0: 7b 15 24 6b 88 fb c7 a9 27 25 7b 84 97 7b 78 7b
+01e0: a6 5b ee 10 60 bb 6a 68 21 bb ce c6 00 03 5b 7e
+01f0: 64 fb 6e ac a7 f0 96 0c fb 1f 5a 37 08 77 28 f7
+  </code></pre>
+<br>
+  Finally, we also have a complete program listing the decryption protocol used by an individual (by the alias of "Turdsucker") which lists everything nescessary for this purpose <i><b>except</b></i> for some constants:
+<img src="u2.png">
 </p>
 

@@ -200,7 +200,7 @@ How can one possibly hope to figure out such a thing as this? First, we (I will 
 
   <h4>TK1 and TK2</h4>
 <p>
-These two variables are actually just the left and right halves, respectively, of a single output from the SNOW cipher. Call this TK1-2. TK1-2 is, in turn, the output of an 16-byte CCM mode AES cipher. This cipher contains a 32-byte key, and a 12-byte nonce. TK1-2 is derived in the following way: Set the right half of the key to header bytes 0x00-0x10, and set the left half of the key to a secret number hidden in the 3DS's boot firmware. Set the nonce to header bytes 0x30-0x3c, ad then decrypt header values 0x10-0x20. This output is TK1-2. This brings into play a new secret variable: BT1 (for boot 1).
+These two variables are actually just the left and right halves, respectively, of a single output from the SNOW cipher. Call this TK1-2. TK1-2 is, in turn, the output of an 16-byte CCM mode AES cipher. This cipher contains a 32-byte key, and a 12-byte nonce. TK1-2 is derived in the following way: Combine header bytes 0x00-0x10, with a secret number hidden in the 3DS's boot firmware, and make these a new key. Set the nonce to header bytes 0x30-0x3c, ad then decrypt header values 0x10-0x20 using the key we established before. This output is TK1-2. This brings into play a new secret variable: KeyX, as well as the algorithm for combining the first 16 header bytes (KeyY) with KeyX to generate what is known as the NormalKey (NK). Call this algorithm algo1. While we do technically have enough information to determine the output that algo1 would produce exclusively from the header, it would take an average of 2^127 iterations, which is impractical. Remember that AES encryption is very secure.
 </p> 
 
 
@@ -209,8 +209,10 @@ These two variables are actually just the left and right halves, respectively, o
 
 </p> 
 
-  <h3>The quest for BT1</h4>
-<p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. That's why I used Ghidra to disassemble the file, using little-endian ARM v7. It is OK to disassemble this ARM9 binary using ARM7 syntax since they are backwards-compatible. Also note that while the 3DS normally operates using big-endian byte ordering, this particular file was all jumbled and containing of incorrect opcodes unless </p>
+  <h3>The quest for the NormalKey</h4>
+<p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! (the bootloader for the 3DS coprocessor which handles encryption and stuff). A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. However, if we can figure out how to disassemble the bootloader (and other firmware files as well), we can figure out exactly how the encryption process works! Well, sort of, at least. If there is anything done by the hardware, it is impossible to know exactly what that is. Fortunately, it seems as though 3DBrew has already established the algorithm for us: NK equals KeyX is rotated left 2 bits, and then the result is XOR'd with KeyY. Then, add a constant, and rotate the result right 41 bits. This is all kind of difficult to imagine just from reading plaintext, so let me show you a diagram (this only includes the derivation for the NK, other diagrams will be shown later). </p> 
+<br>
+<img src="_static/u2.png">
 
 <!-- <h3>Initial key generation</h3>
 <p>

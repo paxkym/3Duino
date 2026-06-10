@@ -212,7 +212,7 @@ These two variables are actually just the left and right halves, respectively, o
   <h3>The quest for the NormalKey</h4>
 <p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! (the bootloader for the 3DS coprocessor which handles encryption and stuff). A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. However, if we can figure out how to disassemble the bootloader (and other firmware files as well), we can figure out exactly how the encryption process works! Well, sort of, at least. If there is anything done by the hardware, it is impossible to know exactly what that is. Fortunately, it seems as though 3DBrew has already established the algorithm for us: NK equals KeyX is rotated left 2 bits, and then the result is XOR'd with KeyY. Then, add a constant, and rotate the result right 41 bits. This is all kind of difficult to imagine just from reading plaintext, so let me show you a diagram (this only includes the derivation for the NK, other diagrams will be shown later). </p> 
 <br>
-<img src="_static/u2.png">
+<img src="https://blog.jongallant.com/images/logo.png">
 
 <!-- <h3>Initial key generation</h3>
 <p>

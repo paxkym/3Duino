@@ -6,13 +6,14 @@
   protocol. When I tried to get the ROM protocol working as listed in the wiki, absolutely nothing worked. But, as the saying goes, 'If you want something done right, do it yourself'. Therefore, I have here shown the reverse engineered protocol as per my own experiments. Also, don't
   use this for piracy (wink wink), devaluation, crap romhacks, yadda yadda yadda. Enjoy! And please don't put this all on ChatGPT (not wink wink, actually serious). I put hard work into making this, and for some stupid robot to come and make money for Sam Altman off of my back is totally unnacceptable.
 </p>
-  
-<h2>The encryption problem</h2>
+
+<h2>Main content</h3>
+<h3>The encryption problem</h3>
 <p>
 I will not go into excessive detail about the known parts of the 3DS gamecard protocol, since it can be found everywhere online and I don't want to clutter this article. The gist is that there is a bunch of unencrypted data sent to the 3DS by the gamecard when it is first plugged in, followed by encrypted data. The encrypted data is encrypted using a known set of algorithms, which take into account both data from the unencrypted section of the card, as well as some secret information in the 3DS itself. The hard part of all of this is figuring out what that secret info actually is.
 </p>
 
-<h2>A strong start</h2>
+<h3>A strong start</h3>
 <p>
 How can one possibly hope to figure out such a thing as this? First, we (I will use the first person for the remainer of this article, simply because it is easier, and this is not a professional setting like a paper or something) must find all of the already known info about the protocol. There only appear to be two websites which can aid with this: <a href="https://3dbrew.org">3dbrew.org</a>, and <a href="https://problemkaputt.de">Martin Korth's website (no$)</a>. One of the most helpful tools, if not the most helpful, is the chart on 3dBrew which gives both the encrypted and decrypted commands next to each other. Here is a copy of that chart (in case it is taken down for whatever reason):
   <br>
@@ -129,7 +130,7 @@ How can one possibly hope to figure out such a thing as this? First, we (I will 
   My goal is to figure out how those constants were derived, so they can be found by myself.
 </p>
 
-<h2>Protocol info</h2>
+<h3>Protocol info</h3>
 <p>
   Before any actual decryption work is done, we must first establish the actual protocol used. There are 2 encryption methods used: SNOW 2.0, and RC4. The exact details of these will be explained later. Anyway, the SNOW (I will use the term 'SNOW', even though this is actually SNOW 2.0, which is different from the original SNOW) cipher is used to generate a key for the RC4 cipher, which then does the actual encryption. SNOW takes in a key, as well as an initialization vector. From there, you can encrypt as many words (sets of 4 bytes) as you wish. RC4 takes in one key, and also produces a stream in a similar manner. Let us create a chart to help remember this:
   <table>
@@ -154,7 +155,7 @@ How can one possibly hope to figure out such a thing as this? First, we (I will 
     </tr>
   </table>
 
-  Let us also make note of all of the unknown variables present:
+  Let us also make note of all of the secret variables present:
   <table>
     <tr>
       <th>Name</th>
@@ -189,8 +190,28 @@ How can one possibly hope to figure out such a thing as this? First, we (I will 
   </table>
 </p>
 <p>
-  While I could theoretically just try and reverse the RC4 encryption algorithm or restore the image that I showed before, the reality is that even if you knew all of the unknown variables for this one particular gamecard that we are looking at, those variables change based off of the card. In other words, the image of card decryption that I just showed above is not a universal algorithm. It only works for one particular card (Lego starwars 3). The way that these variables are derived in the first place is from the gamecard header information, by the 3DS's firmware, so the unknown in this case is not a simple set of numbers, but rather a derivation algorithm. The goal of this project is therefore to create a program which can, using the header, decrypt those commands we saw before. Our work is cut out for us now.
+  While I could theoretically just try and reverse the RC4 encryption algorithm or restore the image that I showed before, the reality is that even if you knew all of the secret variables for this one particular gamecard that we are looking at, those variables change based off of the card. In other words, the image of card decryption that I just showed above is not a universal algorithm. It only works for one particular card (Lego starwars 3). The way that these variables are derived in the first place is from the gamecard header information, by the 3DS's firmware, so the unknown in this case is not a simple set of numbers, but rather a derivation algorithm. The goal of this project is therefore to create a program which can, using the header, decrypt those commands we saw before. Our work is cut out for us now.
 </p>
+
+<h3>The beginning of derivation</h3>
+<p>
+  Where exactly do these variables come from? Let us figure this out (all information comes from 3DBrew):
+</p>
+
+  <h4>TK1 and TK2</h4>
+<p>
+These two variables are actually just the left and right halves, respectively, of a single output from the SNOW cipher. Call this TK1-2. TK1-2 is, in turn, the output of an 16-byte CCM mode AES cipher. This cipher contains a 32-byte key, and a 12-byte nonce. TK1-2 is derived in the following way: Set the right half of the key to header bytes 0x00-0x10, and set the left half of the key to a secret number hidden in the 3DS's boot firmware. Set the nonce to header bytes 0x30-0x3c, ad then decrypt header values 0x10-0x20. This output is TK1-2. This brings into play a new secret variable: BT1 (for boot 1).
+</p> 
+
+
+  <h4>SNIV</h4>
+<p>
+
+</p> 
+
+  <h3>The quest for BT1</h4>
+<p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. </p>
+
 <!-- <h3>Initial key generation</h3>
 <p>
   The key for encrypting data is generated by the SNOW cipher. This is derived via two variables: Title key 1 (TK1), Title key 2 (TK2), and the SNOW initialization vectors (SNIV). Note that the key generated will change every time a command is sent. 

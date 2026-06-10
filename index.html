@@ -210,7 +210,7 @@ These two variables are actually just the left and right halves, respectively, o
 </p> 
 
   <h3>The quest for BT1</h4>
-<p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. </p>
+<p>OK, so now it has been established that we need to search the console's firmware to find out BT1. Where is it? Boot9! A copy of the bootloader can be found <a href="https://archive.org/download/nand-dumps">here</a>, by navigating to "3ds backup", and then finding boot9.bin. Looking at it, it is kind of just nonsense. That's why I used Ghidra to disassemble the file, using little-endian ARM v7. It is OK to disassemble this ARM9 binary using ARM7 syntax since they are backwards-compatible. Also note that while the 3DS normally operates using big-endian byte ordering, this particular file was all jumbled and containing of incorrect opcodes unless </p>
 
 <!-- <h3>Initial key generation</h3>
 <p>

@@ -292,6 +292,7 @@ To use this mechanism, you must write to AES_KEYCNT which keyslot you would like
     }
     puVar2[param_1 * 0xc + 0x17] = uVar4;
   }
+      //POINT1
   else if (param_1 - 4 < 0x3c) {
     *(byte *)((int)puVar1 + 0x11) = *(byte *)((int)puVar1 + 0x11) & 0xc0 | (byte)param_1 | 0x80;
     iVar3 = DAT_ffff8b8c;
@@ -306,6 +307,52 @@ To use this mechanism, you must write to AES_KEYCNT which keyslot you would like
                                                          
   </code></pre>
 
+<br>
+One observation is that, where I left the comment 'POINT1', it can be seen that 4 bytes of data are sequentially copied to a certain memory address. Which one? According to Ghidra, this points to address 0x0fff9104, which was our address of interest. Indeed, the fact that bytes are individually copied to this point makes sense given that we already established that this is how the AES_KEYXFIFO register works. In order for this copying to occur, the first parameter to the function must be greater than 0x04, but less than 0x40. Although there seem to be many other goodies in this function, for now let us trace where it gets called. There seems to be only one function in the entire bootloader that calls FUN_FFFF8B18. That function is FUN_FFFF9064. I will not paste it here, since it is about 250 lines long, but the point is that it is a complicated function that seems to just call a ton of other functions. One example is FUN_ffff8aa0:
+
+<pre><code>
+  
+void FUN_ffff8aa0(uint param_1,int param_2,uint *param_3)
+
+{
+  uint *puVar1;
+  uint uVar2;
+  
+  puVar1 = DAT_ffff8b10;
+  *DAT_ffff8b10 = *DAT_ffff8b10 & 0xfd7fffff | param_2 &lr< 0x17;
+  if (param_1 < 4) {
+    puVar1 = DAT_ffff8b10 + param_1 * 0xc + 0x10;
+    if (param_2 * 0x20000000 < 0) {
+      *puVar1 = param_3[3];
+      puVar1[1] = param_3[2];
+      puVar1[2] = param_3[1];
+      uVar2 = *param_3;
+    }
+    else {
+      *puVar1 = *param_3;
+      puVar1[1] = param_3[1];
+      puVar1[2] = param_3[2];
+      uVar2 = param_3[3];
+    }
+    puVar1[3] = uVar2;
+  }
+      //POINT1
+  else if (param_1 - 4 < 0x3c) {
+    *(byte *)((int)puVar1 + 0x11) = *(byte *)((int)puVar1 + 0x11) & 0xc0 | (byte)param_1 | 0x80;
+    puVar1 = DAT_ffff8b14;
+    *DAT_ffff8b14 = *param_3;
+    *puVar1 = param_3[1];
+    *puVar1 = param_3[2];
+    *puVar1 = param_3[3];
+    return;
+  }
+  return;
+}
+
+
+</code></pre>
+<br>
+Looks familiar? That's because this is almost the exact same function as FUN_FFFF8B18, except that now at my POINT1 marker, we are modifying 0xfff9100. Again, this specific address does not appear in the decompiled code, but trust me, it is there. When puVar1 is set equal to DAT_ffff8b14, it is actually being set equal to the number at that address, and that address is set equal to 0x0fff9100 statically. We can probably throw out most of the functions in FUN_FFFF9064 and only extract the ones of interest. This gives us the following, simplified version of FUN_FFFF9064:
 
 </p>
 

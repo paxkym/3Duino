@@ -352,8 +352,35 @@ void FUN_ffff8aa0(uint param_1,int param_2,uint *param_3)
 
 </code></pre>
 <br>
-Looks familiar? That's because this is almost the exact same function as FUN_FFFF8B18, except that now at my POINT1 marker, we are modifying 0xfff9100. Again, this specific address does not appear in the decompiled code, but trust me, it is there. When puVar1 is set equal to DAT_ffff8b14, it is actually being set equal to the number at that address, and that address is set equal to 0x0fff9100 statically. We can probably throw out most of the functions in FUN_FFFF9064 and only extract the ones of interest. This gives us the following, simplified version of FUN_FFFF9064:
+Looks familiar? That's because this is almost the exact same function as FUN_FFFF8B18, except that now at my POINT1 marker, we are modifying 0xfff9100. Again, this specific address does not appear in the decompiled code, but trust me, it is there. When puVar1 is set equal to DAT_ffff8b14, it is actually being set equal to the number at that address, and that address is set equal to 0x0fff9100 statically. We can probably throw out most of the functions in FUN_FFFF9064 and only extract the ones of interest. How do we know which functions are useful? We can trim away any AES register writing functions which are not writing to AES_KEYXFIFO (0x10009104) or AES_KEYCNT (0x10009011). There are three functions for modifying AES_KEYCNT, which all use a certain line of code. These functions are FUN_ffff8aa0, FUN_ffff8b18, and FUN_ffff8b90. Here is that line of code:
+    <pre><code>
+      *(byte *)((int)puVar1 + 0x11) = *(byte *)((int)puVar1 + 0x11) & 0xc0 | (byte)param_1 | 0x80;
+    </code></pre>
+    <br>
+    Remember that to write to AES_KEYCNT, we need to set the first 5 bits to the keyslot of interest. Our codeblock from before can be rewritten as follows:
+   <br>
+    <pre><code>
+      AES_KEYCNT = AES_KEYCNT & 0b11000000 | param_1 | 0b10000000;
+    </code></pre>
+    <br>
+    Notice how the new state is dependent on the previous state, meaning that we need to trace every single time that AES_KEYCNT is modified in order to figure out which register it modifies. That sounds difficult. But there might be a way to counter this. If we can find an instance where param_1 has its two most significant bits set, then the new value of AES_KEYCNT is guaranteed to also have those two bits set. In the next command, then, that value will be ANDed with 0b11000000, giving a guaranteed output of 0b11000000. Let us look at all inputs of param1 in the three previously mentioned functions: 
 
+    
+    <code>3f, 3f, 05, 04-14, 05, 14-17, 05, 18-28, 05, 28-2b, 2c-3b, 3c-3f, 04-0b, 0c-10, 14-17, 18-28, 28-2b, 2c-3c, 3c-3f</code> 
+    Gee, thanks Nintendo. Every number here listed has its 2 MSBs set to 0. Since FUN_FFFF9064 is the only function which seems to access this register, we can assume its initial value is just 0x00. If it is not, that could be an issue. Even so, this should only end up coming down to one bit of difference, so even if we are wrong, we can still try an alternate option. For now, assume bit 6 (from the left) begins at 0. We cannot check its value in the bootloader code, since it does not go into that address range. For all we know, these RAM addresses may not even be actual RAM. Back on track, let's look at how the AES_KEYCNT register evolves each access:
+  <br>
+
+    <code>3f, 3f, 31, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 34, 34, 34, 35, 31, 35, 35, 35, 35, 31, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 31, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 35, 35, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 3f</code>
+    As you can see, 3b appears 8 times. Let us look at adapted version of the first 4 of those lines in code (the other 4 should not be nescessary in theory, because as long as the first 4 do their job, we can check everything as is):
+    <pre><code>
+     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x2c,5,iVar5 + 0x20)
+     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x30,5,iVar5 + 0x30);
+     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x34,5,iVar5 + 0x40);
+     for(int i = 0;i &lr 4;i++)    FUN_ffff8b18(i + 0x38,5,iVar5 + 0x50);
+    </code></pre>
+    This is useful because it keeps AES_KEYCNT at 0x3b, while also setting the desired bytes to AES_KEYXFIFO. These must therefore be the lines we are looking for, where KeyX's value is the third parameter in each function. It makes sense that this would be called 4 times in a row in each FOR loop, but it does not make sense why there are 4 of those loops, since one is sufficient to fill KeyX with 4*32=128 bits, the size of the key. My hypothesis is that the CPU needs to start at some smaller value of parameter 1 in order to use that weird mechanic I showed before in order to build up to 0x3b. Perhaps the other parameters are filled in as a red herring to anybody who is trying to reverse engineer this, since, from what I can tell, they have no effect on the future value of KeyX. What is iVar5? This is register 7, with a signed int32 data type. What is is equal to? I am not going to step through every single line of code to find this out, because not only is this overly complex, but error-prone as well. Why not just simulate everything and see what happens to this address? Let's do it.
+
+  
 </p>
 
 

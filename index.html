@@ -368,21 +368,27 @@ Looks familiar? That's because this is almost the exact same function as FUN_FFF
     
     <code>3f, 3f, 05, 04-14, 05, 14-17, 05, 18-28, 05, 28-2b, 2c-3b, 3c-3f, 04-0b, 0c-10, 14-17, 18-28, 28-2b, 2c-3c, 3c-3f</code> 
     Gee, thanks Nintendo. Every number here listed has its 2 MSBs set to 0. Since FUN_FFFF9064 is the only function which seems to access this register, we can assume its initial value is just 0x00. If it is not, that could be an issue. Even so, this should only end up coming down to one bit of difference, so even if we are wrong, we can still try an alternate option. For now, assume bit 6 (from the left) begins at 0. We cannot check its value in the bootloader code, since it does not go into that address range. For all we know, these RAM addresses may not even be actual RAM. Back on track, let's look at how the AES_KEYCNT register evolves each access:
-  <br>
+    <br>
 
-    <code>3f, 3f, 31, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 34, 34, 34, 35, 31, 35, 35, 35, 35, 31, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 31, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 35, 35, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 3f</code>
-    As you can see, 3b appears 8 times. Let us look at adapted version of the first 4 of those lines in code (the other 4 should not be nescessary in theory, because as long as the first 4 do their job, we can check everything as is):
+    <pre><code>3f, 3f, 31, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 34, 34, 34, 35, 31, 35, 35, 35, 35, 31, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 31, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 31, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 33, 34, 35, 35, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 39, 39, 39, 39, 3a, 3a, 3a, 3a, 3a, 3b, 3b, 3b, 3b, 3c, 3c, 3c, 3c, 3d, 3d, 3d, 3d, 3e, 3e, 3e, 3e, 3f, 3f, 3f, 3f, 3f</code></pre>
+      <br>
+
+    As you can see, 3b appears 8 times. Let us look at adapted version of the line of code which creates the first 4:
     <pre><code>
-     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x2c,5,iVar5 + 0x20)
-     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x30,5,iVar5 + 0x30);
-     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x34,5,iVar5 + 0x40);
-     for(int i = 0;i &lr 4;i++)    FUN_ffff8b18(i + 0x38,5,iVar5 + 0x50);
+     for(int i = 0;i < 4;i++)    FUN_ffff8b18(i + 0x2c,5,iVar5 + 0x20);
+       
     </code></pre>
-    This is useful because it keeps AES_KEYCNT at 0x3b, while also setting the desired bytes to AES_KEYXFIFO. These must therefore be the lines we are looking for, where KeyX's value is the third parameter in each function. It makes sense that this would be called 4 times in a row in each FOR loop, but it does not make sense why there are 4 of those loops, since one is sufficient to fill KeyX with 4*32=128 bits, the size of the key. My hypothesis is that the CPU needs to start at some smaller value of parameter 1 in order to use that weird mechanic I showed before in order to build up to 0x3b. Perhaps the other parameters are filled in as a red herring to anybody who is trying to reverse engineer this, since, from what I can tell, they have no effect on the future value of KeyX. What is iVar5? This is register 7, with a signed int32 data type. What is is equal to? I am not going to step through every single line of code to find this out, because not only is this overly complex, but error-prone as well. Why not just simulate everything and see what happens to this address? Let's do it.
-
+    As you can see, the function is called 4 times in order to fill the 4 sets of 32 bits which compose the KeyX. Moreover, KeyX seems to just be the same 4 bytes repeated 4 times. But now a new variable is introduced: iVar5. This variable is equal to register 7, and while it is theoretically possible to statically analyze the bootloader to find out where this comes from, it would be a whole lot easier to just perform a simulation. Ghidra has a tool for this, but upon trying to perform our simulation, the following error occurs:
+    <br>
+    <pre><code>Sleigh userop 'coproc_movefrom_Control' is not in the library ghidra.pcode.exec.ComposedPcodeUseropLibrary@759a6298</code></pre>
+    <br>
+    What does this mean? It means that an mcr opcode was used, but Ghidra cannot handle these. This is because mcr (and mrc) are both coprocessor access opcodes, and the coprocessor functionality is highly variable between chips. Thus, we will need to either implement the correct functions for this particular CPU (the ARM946), or find an emulator which can do so natively. It just so happens that the DS also uses the exact same processor to run games. Perhaps we can take Boot9, turn it into a DS cart, and then see what happens.
   
 </p>
-
+  <h4>A minor inconvenience</h4>
+  <p>
+    It is very inconvenient that our emulator tools have no support for the very things we are emulating. Alas, we press on. I have created a library which implements this functionality
+  </p>
 
 
 

@@ -387,9 +387,26 @@ Looks familiar? That's because this is almost the exact same function as FUN_FFF
 </p>
   <h4>A minor inconvenience</h4>
   <p>
-    It is very inconvenient that our emulator tools have no support for the very things we are emulating. Alas, we press on. I have created a library which implements this functionality
+    It is very inconvenient that our emulator tools have no support for the very things we are emulating. Alas, we press on. I first implemented some custom functions to just bypass all mcr and mrc commands, so they do nothing. But now what happens once the program is emulated? When I put the Boot9.bin file into Ghidra, along with the nescessary language constraints (), the emulation infinitely loops FUN_ffff2264 only a handful of executions in. This happens because it loops the following lines:
+    <pre><code>
+      0x10008000: 0x80000900
+      ...
+      0xffff2248: bl 0xffff2264
+      0xffff224d: cmp r0,#0xb
+      0xffff224e: bne 0xffff2248
+      ...
+      0xffff2264: ldr r0,[0xffff2270]
+      0xffff2266: ldr r0,[r0,#0x0]
+      0xffff2268: lsl r0,#0x18
+      0xffff2268: rsl r0,#0x18
+      0xffff226c: bx lr
+      0xffff2270: 0x10008000
+      
+    </code></pre>
+    A simple analysis can show why this would loop. Address 0x10008000 needs to have the least significant byte set to 0x0b (remember this is little endian!) to stop looping. But this never changes, so it loops. Maybe the coprocessor instructions do in fact matter? It first needs to be determined what line of code would prevent the looping behavior we saw before. This would require changing the value of address 0x10008000, or having r0 be set to 0xb before the PC reaches address 0xffff224d. Let's try the first option. Since this address is not part of the bootrom, there is some line which is setting it. Let's set a breakpoint for when that address is written to, so we can see which line sets it. It looks like that line is 0xffff223c. The details are not important. The point is that our address of interest is set by combining 0xfff039e0 with 0xffff1f3f. If these values change when we change the dummy return value of an mcr instruction, then we know that this has something to do with it. What happens if coproc_movefrom_Control() returns 0xffffffff instead of 0? Now our two values to combine are still the same. The way the program is structured implies that it is working properly, except for some other factor. Perhaps it would help to step through the different behaviors between different returns of coproc_movefrom_Control(), and then find at which line the two stop having different register values after the same number of PC increments. Normally, you cannot open the same file in two windows in Ghidra to do this, but I went around this by simply copying my project and opening two identical versions. Then, I applied two different implementations of coproc_movefrom_Control(), and analyzed. This did not help at first, until I realized that we can just take a look at exactly how our coproc_movefrom_Control() output is handled. In other words, how does it always end up becoming the same thing? Let's look. 
   </p>
 
+  
 
 
 

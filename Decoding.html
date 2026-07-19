@@ -1,8 +1,119 @@
 <h1>Finding a few constants</h1>
-<p>A person on the 3DBrew Wiki by the alias of "turdsucker" posted the following image online of a python program to decode the 3DS gamecard protocol:
+<p>A person on the 3DBrew Wiki by the alias of "turdsucker" posted the following image online of a python program to decode the 3DS gamecard protocol:</p>
+
 <img src="https://i.imgur.com/1tYQgdK.png"/>
 <br/>
-Unfortunately, a bunch of constants are blurred out. Let's figure out what these are. Let's look at the first "cardsnowiv". How can this be descrambled? First, find the exact font used, and then compare each letter to those of the image. The best match should be the original letter. I have come up with the following to figure this out:
-  
+<p>Unfortunately, a bunch of constants are blurred out.</p>
+<h2>The Easy Part</h2>
+<p>
+It is luckily very easy to figure out what the titlekey1 and 2 variables are. They are equal to the AES CCM plaintext extracted from a 3DS gamecard's unencrypted header when decrypted from a derived normalkey. What does this mean? It means that to decode, use the following steps:
+
+<ol>
+  <li>Take the KeyY from your gamecard, and derive a normalkey using the following: NormalKey = ((((0xB529221CDDB5DB5A1BF26EFF2041E875 &lt;&lt;&lt; 2) ^ KeyY) + 1FF9E9AAC5FE0408024591DC5D52768A) &gt;&gt;&gt; 87)<br/>This gives a NormalKey of 0xEC6F2D0C307A113A8F1E6AB6B83907A6</li>
+  <li>Take the NormalKey, and then use it in an AES-CCM cipher as follows:<br/>
+  <ul>
+    <li>NormalKey: 0xEC6F2D0C307A113A8F1E6AB6B83907A6</li>
+    <li>Nonce:     0x9159D7383348DF83FD71842C</li>
+    <li>MAC:       0x8E6B272F0801283BD430DE4437F5B046</li>
+    <li>Ciphertext:0xB3CFFBC66AB1CB2032AFCE35D41C74C9</li>
+  </ul>
+  </li>
+</ol>
+<br/>
+This gives a result of 0x417BC9A2F53D9EEFDF58CF9916C8DD13, meaning that the titlekey variables are as follows: 
+<br/>
+titlekey1 = 0x417BC9A2F53D9EEF
+titlekey2 = 0xDF58CF9916C8DD13 
+<br/>
+</p>
+<h2>The Hard Part</h2>
+<p>We still have to figure out what cardrc4keyhalf and cardsnowiv are.</p>
+
+<h3>A Strong Start</h3>
+<p>
+What <i><b>do</b></i> we know? It is already known that these two variables can be switched between based off of the gamecard's ID1 and ID2. That's why the above image has commented out three sets of these variables (because there are four possible sets of ID1 and ID2). Since these variables are set when talking to the gamecard, it makes sense to start looking in the firmware files which perform this task. This is probably firm0.bin. I have disassembled a raw firm0 file using Reko, using both Thumb and Arm32 disassembly (since it is hard to know which is which in the file). Note that the vast majority of the firmware is written in Thumb, however. I have attached those disassemblies in the repository for those who are interested. I have already found a good anchoring point in the firmware, at address 0xC7708. This address contains half of a constant (0x71C93FE9BB0A3B18) which is sent to gamecards by the 3DS (the other half is at 0xC7710), which implies that the 3DS is using that region of code to talk to the card. 
+</p>
+
+
+<h3>Simple Searching</h3>
+<p>
+We now need to do a simple search to find out when this constant is used. It can be seen that a few lines nearby, the following is found (I have added some comments):
+
+<pre>
+000C76B2 4815           	ldr	r0,[000C7708] ;0xE93FC971, the first half
+000C76B4 4C15           	ldr	r4,[000C770C] ;0x10164000 
+000C76B6 60A0           	str	r0,[r4,#&8]
+000C76B8 4815           	ldr	r0,[000C7710] ;0x183B0ABB, the second half
+000C76BA 60E0           	str	r0,[r4,#&C]
+</pre>
+
+What this does is to load the constant into address 0x10164008. Address 0x10164000 is the starting point for the NTRCARD registers, so the 3DS is sending the commands as if it were talking to a DS gamecard. Indeed, address 0x10164008 is used to send commands to the cartridge (see <a href="https://www.3dbrew.org/wiki/NTRCARD_Registers">3DBrew</a>. What does it do then? Since the console does not yet know if the card is for the DS or 3DS, we should find where it determines this. When the 3DS sends the command 0x9000000000000000, it expects the card to respond with its ID1. We should therefore see where the next command is sent. Specifically, we want to know where the aforementioned one is sent, so that we can see when the NTRCARD FIFO is read, and what is done with this. This can be accomplished by searching for where the NTRCARD command register is written to. I was able to find some other locations, but the one which caught my eye was starting at 0xD14C2:
+<pre>
+000D14BE FFFF B51C     	vsli.i32	d27,d12,#&1F
+000D14C2 2100           	mov	r1,#0
+000D14C4 9100           	str	r1,[sp]
+000D14C6 9101           	str	r1,[sp,#&4]
+000D14C8 7802           	ldrb	r2,[r0]
+000D14CA 4669           	mov	r1,sp
+000D14CC 71CA           	strb	r2,[r1,#&7]
+000D14CE 7842           	ldrb	r2,[r0,#&1]
+000D14D0 718A           	strb	r2,[r1,#&6]
+000D14D2 7882           	ldrb	r2,[r0,#&2]
+000D14D4 714A           	strb	r2,[r1,#&5]
+000D14D6 78C2           	ldrb	r2,[r0,#&3]
+000D14D8 710A           	strb	r2,[r1,#&4]
+000D14DA 7902           	ldrb	r2,[r0,#&4]
+000D14DC 70CA           	strb	r2,[r1,#&3]
+000D14DE 7942           	ldrb	r2,[r0,#&5]
+000D14E0 708A           	strb	r2,[r1,#&2]
+000D14E2 7982           	ldrb	r2,[r0,#&6]
+000D14E4 704A           	strb	r2,[r1,#&1]
+000D14E6 79C0           	ldrb	r0,[r0,#&7]
+000D14E8 7008           	strb	r0,[r1]
+000D14EA 4803           	ldr	r0,[000D14F8]
+000D14EC 9900           	ldr	r1,[sp]
+000D14EE 6081           	str	r1,[r0,#&8]
+000D14F0 9901           	ldr	r1,[sp,#&4]
+000D14F2 60C1           	str	r1,[r0,#&C]
+000D14F4 BD1C           	pop	{r2-r4,pc}
+</pre>
+
+Let us take a look at what this actually does. A certain address is stored in sp. In 0xD14C2-8, the address pointed to by sp is cleared by zero-filling it, and then in 0xD14CA-E8, the value pointed to by register r0 is byte-swapped and then stored in the address pointed to by sp. In 0xD14EA-F2, the NTRCARD command register is filled with the value in the address pointed to by sp, and then in 0xD14F4, there is a funtion return. What this tells us is that this is a function which byte-swaps whatever is pointed to by r0, and then sends that to the gamecard as a command. If we can find where this is called, this will show us what commands are sent. We know this is a function also because right before this is a return statement, so it is impossible that there is any code which continues executing into this. There seems to be only one place which calls this function, which is at 0xCFEE8. This is as follows:
+
+<pre>
+000CFED4 9806           	ldr	r0,[sp,#&18]
+000CFED6 22B7           	mov	r2,#&B7
+000CFED8 1900           	add	r0,r0,r4
+000CFEDA 0041           	lsls	r1,r0,#1
+000CFEDC 2000           	mov	r0,#0
+000CFEDE 0612           	lsls	r2,r2,#&18
+000CFEE0 430A           	orrs	r2,r1
+000CFEE2 9002           	str	r0,[sp,#&8]
+000CFEE4 A802           	add	r0,sp,#8
+000CFEE6 9203           	str	r2,[sp,#&C]
+000CFEE8 F001 FAEA     	bl	$000D14C0
+</pre>
+
+Remember that we are looking for the address loaded into r0 (not the actual value in the register, but rather the address it points to). What is this value? A simple analysis shows that r0 is equal to the stack pointer plus 8. This means that the value of interest is equal to the 8-12th byte of the stack, which should theoretically correspond to the third-to-last integer pushed there since the CPU is 32-bit (4 byte). Since this block of code is inaccessible without a branch, it must be called somewhere. Where? At 0xCFF40. This is not a call, however, but rather a branch. We need to dig deeper to find the underlying push to the stack. Going upstream, it can be found that this is located in a function starting at address 0xCFEE8, which is the one we just looked at. I suppose there is some kind of recursive function here that breaks at some point. But this is actually good, because it gives us a closed loop to look in. Looking here, I found something I did not notice before: That r0 loads up the third stak byte with a zero, but then passes that same byte into the command-sending function. This means that it is just sending out a zero, which is a real NTRCARD command. But I then realized a critical point: When calling our command sender, address 0xD14C0 is loaded, which is in the middle of an instruction. I assumed this was just garbage initially, but perhaps it is something else? Disassembling, I got: push {r2, r3, r4, lr}. Aha! This is the missing stack push. You should never put too much faith in your disassembler. 
+
+
+
+
 
 </p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

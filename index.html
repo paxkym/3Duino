@@ -3,7 +3,7 @@
 
 <img src="https://i.imgur.com/1tYQgdK.png"/>
 <br/>
-<p>Unfortunately, a bunch of constants are blurred out.</p>
+<p>Unfortunately, a bunch of constants are blurred out. I have written this "essay", or whatever you want to call it, as the first and only published attempt at finding all of these constants to piece together the 3DS protocol. I also want this to be a teaching resource, so that people can see that reverse engineering can be very fulfilling and interesting, but also extremely difficult. I have been working on all of this for almost a year now. Even though what I write seems super straightforward and easy, I actually went through a lot of trouble and dead ends here. People don't usually show the hard part, which is fine, but also makes it seem like oneself is worse than they actually are. Just remember that what seems like a dead end may actually not be if you have faith that it will work.</p>
 <h2>The Easy Part</h2>
 <p>
 It is luckily very easy to figure out what the titlekey1 and 2 variables are. They are equal to the AES CCM plaintext extracted from a 3DS gamecard's unencrypted header when decrypted from a derived normalkey. What does this mean? It means that to decode, use the following steps:
@@ -95,7 +95,105 @@ Let us take a look at what this actually does. A certain address is stored in sp
 </pre>
 
 Remember that we are looking for the address loaded into r0 (not the actual value in the register, but rather the address it points to). What is this value? A simple analysis shows that r0 is equal to the stack pointer plus 8. This means that the value of interest is equal to the 8-12th byte of the stack, which should theoretically correspond to the third-to-last integer pushed there since the CPU is 32-bit (4 byte). Since this block of code is inaccessible without a branch, it must be called somewhere. Where? At 0xCFF40. This is not a call, however, but rather a branch. We need to dig deeper to find the underlying push to the stack. Going upstream, it can be found that this is located in a function starting at address 0xCFEE8, which is the one we just looked at. I suppose there is some kind of recursive function here that breaks at some point. But this is actually good, because it gives us a closed loop to look in. Looking here, I found something I did not notice before: That r0 loads up the third stak byte with a zero, but then passes that same byte into the command-sending function. This means that it is just sending out a zero, which is a real NTRCARD command. But I then realized a critical point: When calling our command sender, address 0xD14C0 is loaded, which is in the middle of an instruction. I assumed this was just garbage initially, but perhaps it is something else? Disassembling, I got: push {r2, r3, r4, lr}. Aha! This is the missing stack push. You should never put too much faith in your disassembler. 
+But what does this mean for our work? These items are pushed to the stack, but in the following instructions, they are seemingly not used. In the above function. 0 is moved into r0, and then this value is effectively pushed to the stack. Then, r0 is set to the address of that item in the stack, and the command funtion is called. Let's look at this again.
+<br/>
+Let's call the stack pointer's value at address 0xCFEDC "spo". Observe:
+<pre>
+000CFEDC 2000           	mov	r0,#0
+...
+000CFEE2 9002           	str	r0,[sp,#&8] ; spo+8 is set to 0
+000CFEE4 A802           	add	r0,sp,#8 ; r0 points to spo+8
+000CFEE6 9203           	str	r2,[sp,#&C] ; spo+12 is set to r2
+000CFEE8 F001 FAEA     	bl	$000D14C0
+...
+000D14C0 B51C           	push {r2, r3, r4, lr} ; sp is now equal to spo+16
+000D14C2 2100           	mov	r1,#0 
+000D14C4 9100           	str	r1,[sp] ; spo+16 is set to 0
+000D14C6 9101           	str	r1,[sp,#&4] ; spo+20 is set to 0
+000D14C8 7802           	ldrb	r2,[r0] ; The value pointed to by r0 is loaded and used
+  
+</pre>
 
+The only possible way that the funtion can not always be sending a 0 command is if spo+8 was overwritten at some point. R0 is passed into the function pointing to a certain address, but that address need not be the original value present. The problem with this is that there is no intermediate point between where the address pointed to by r0 is set to 0, and where it is written as a command. It would make no sense that the command function would only ever have 0 passed into it, because it performs a byte swap. This implies that this function is intended to be used as one which is general-purpose. This function is only explicitly called once, at the address I showed before, so there must be something I am not taking into account. But then again, it seems to be impossible that this would do anything other than output a zero command. However, there do exist other places which have similar function (that is, writing to the NTRCARD command slot). Here they are (only listing the locations where the NTRCARD CMD slot is accessed):
+<ul>
+  <li>0x00087B1C; Unknown functionality</li>
+  <li>0x000B2D6A; Unknown, seems to be general purpose byteswap function</li>
+  <li>0x000C79D8; 9F command</li>
+  <li>0x000D14F8; 00 command (seemingly), general purpose byteswap</li>
+</ul>
+<br/>
+Let us look at the other two functions. First, 0xB2D6A, since this one seems a little more logical. Doing some analysis, it can be seen that the register r1 points to the command to send. R1 is further upstream set to the value pointed to by r5, and r5 is set to 0x52780809 (0x09087852 in the opposite endian). This means that r5 will be equal to the aforementioned address. However, it does not exist, so this is probably memory mapped somewhere else. This makes it hard to figure anything out, because we are looking for a pointer. Maybe the other function has something?
+<br/>
+The function for 0x00087B1C appears to send whatever is pointed to by r5. R5 is set before this to r0. Observe this finding:
+
+<pre>
+00087B10 E18C           	b	$00087E2C
+00087B12 080D           	movs	r5,r1,#0 ; This code is seemingly unreachable
+00087B14 B570           	push	{r4-r6,lr}
+00087B16 0005           	mov	r5,r0
+00087B18 F02B FB7C     	bl	$000B3214
+00087B1C 4C13           	ldr	r4,[00087B6C]                  ; [pc,#&4C]
+00087B1E 60A5           	str	r5,[r4,#&8]
+</pre>
+<br/>
+As you can see, there is an unreachable line, so it would logically follow that this code is called somewhere else in operation. How about 0x00087B14? It is called on 2 occasions:
+<br/>
+<pre>
+00087C1E 20A0           	mov	r0,#&A0
+00087C20 F7FF FF78     	bl	$00087B14
+...
+00082C5A 2090           	mov	r0,#&90
+00082C5C F004 FF5A     	bl	$00087B14
+</pre>
+<br/>
+Hooray! We found it! R0 is set to A0 and 90, which are both valid commands. Let us first look at the 0x90 command. This command asks for the ID1. We now want to find a read from the NTRCARD FIFO, which is at address 0x1016401C. This read appears to occur here:
+<pre>
+00087B10 E18C           	b	$00087E2C
+00087B12 080D           	movs	r5,r1,#0
+00087B14 B570           	push	{r4-r6,lr}
+00087B16 0005           	mov	r5,r0
+00087B18 F02B FB7C     	bl	$000B3214
+00087B1C 4C13           	ldr	r4,[00087B6C]                  ; [pc,#&4C]
+00087B1E 60A5           	str	r5,[r4,#&8]
+00087B20 8820           	ldrh	r0,[r4]
+00087B22 2180           	mov	r1,#&80
+00087B24 4008           	ands	r0,r1
+00087B26 0209           	lsls	r1,r1,#8
+00087B28 1840           	add	r0,r0,r1
+00087B2A 8821           	ldrh	r1,[r4]
+00087B2C 2240           	mov	r2,#&40
+00087B2E 4011           	ands	r1,r2
+00087B30 4308           	orrs	r0,r1
+00087B32 8821           	ldrh	r1,[r4]
+00087B34 0789           	lsls	r1,r1,#&1E
+00087B36 0F89           	lsrs	r1,r1,#&1E
+00087B38 4308           	orrs	r0,r1
+00087B3A 8020           	strh	r0,[r4]
+00087B3C 6860           	ldr	r0,[r4,#&4]
+00087B3E 05D1           	lsls	r1,r2,#&17
+00087B40 4008           	ands	r0,r1
+00087B42 2187           	mov	r1,#&87
+00087B44 6862           	ldr	r2,[r4,#&4]
+00087B46 0609           	lsls	r1,r1,#&18
+00087B48 1841           	add	r1,r0,r1
+00087B4A 2001           	mov	r0,#1
+00087B4C 05C0           	lsls	r0,r0,#&17
+00087B4E 4002           	ands	r2,r0
+00087B50 4311           	orrs	r1,r2
+00087B52 31FF           	adds	r1,#&FF
+00087B54 3101           	adds	r1,#1
+00087B56 6061           	str	r1,[r4,#&4]
+00087B58 0001           	mov	r1,r0
+00087B5A F02A FBB9     	bl	$000B22D0
+00087B5E 2800           	cmps	r0,#0
+00087B60 D001           	beq	$00087B66
+00087B62 69E0           	ldr	r0,[r4,#&1C]
+00087B64 BD70           	pop	{r4-r6,pc}
+00087B66 2000           	mov	r0,#0
+00087B68 43C0           	mvns	r0,r0
+00087B6A BD70           	pop	{r4-r6,pc}
+00087B6C 4000           	ands	r0,r0
+</pre>
 
 
 

@@ -23,6 +23,7 @@ It is luckily very easy to figure out what the titlekey1 and 2 variables are. Th
 This gives a result of 0x417BC9A2F53D9EEFDF58CF9916C8DD13, meaning that the titlekey variables are as follows: 
 <br/>
 titlekey1 = 0x417BC9A2F53D9EEF
+<br/>
 titlekey2 = 0xDF58CF9916C8DD13 
 <br/>
 </p>
@@ -142,7 +143,7 @@ As you can see, there is an unreachable line, so it would logically follow that 
 00087C1E 20A0           	mov	r0,#&A0
 00087C20 F7FF FF78     	bl	$00087B14
 ...
-00082C5A 2090           	mov	r0,#&90
+  00082C5A 2090           	mov	r0,#&90
 00082C5C F004 FF5A     	bl	$00087B14
 </pre>
 <br/>
@@ -153,52 +154,31 @@ Hooray! We found it! R0 is set to A0 and 90, which are both valid commands. Let 
 00087B14 B570           	push	{r4-r6,lr}
 00087B16 0005           	mov	r5,r0
 00087B18 F02B FB7C     	bl	$000B3214
-00087B1C 4C13           	ldr	r4,[00087B6C]                  ; [pc,#&4C]
+00087B1C 4C13           	ldr	r4,[00087B6C] ; 0x10164000
 00087B1E 60A5           	str	r5,[r4,#&8]
-00087B20 8820           	ldrh	r0,[r4]
-00087B22 2180           	mov	r1,#&80
-00087B24 4008           	ands	r0,r1
-00087B26 0209           	lsls	r1,r1,#8
-00087B28 1840           	add	r0,r0,r1
-00087B2A 8821           	ldrh	r1,[r4]
-00087B2C 2240           	mov	r2,#&40
-00087B2E 4011           	ands	r1,r2
-00087B30 4308           	orrs	r0,r1
-00087B32 8821           	ldrh	r1,[r4]
-00087B34 0789           	lsls	r1,r1,#&1E
-00087B36 0F89           	lsrs	r1,r1,#&1E
-00087B38 4308           	orrs	r0,r1
-00087B3A 8020           	strh	r0,[r4]
-00087B3C 6860           	ldr	r0,[r4,#&4]
-00087B3E 05D1           	lsls	r1,r2,#&17
-00087B40 4008           	ands	r0,r1
-00087B42 2187           	mov	r1,#&87
-00087B44 6862           	ldr	r2,[r4,#&4]
-00087B46 0609           	lsls	r1,r1,#&18
-00087B48 1841           	add	r1,r0,r1
-00087B4A 2001           	mov	r0,#1
-00087B4C 05C0           	lsls	r0,r0,#&17
-00087B4E 4002           	ands	r2,r0
-00087B50 4311           	orrs	r1,r2
-00087B52 31FF           	adds	r1,#&FF
-00087B54 3101           	adds	r1,#1
-00087B56 6061           	str	r1,[r4,#&4]
-00087B58 0001           	mov	r1,r0
-00087B5A F02A FBB9     	bl	$000B22D0
-00087B5E 2800           	cmps	r0,#0
-00087B60 D001           	beq	$00087B66
+...
 00087B62 69E0           	ldr	r0,[r4,#&1C]
 00087B64 BD70           	pop	{r4-r6,pc}
-00087B66 2000           	mov	r0,#0
-00087B68 43C0           	mvns	r0,r0
-00087B6A BD70           	pop	{r4-r6,pc}
-00087B6C 4000           	ands	r0,r0
+</pre>
+<br/>
+Line 0x87B64 is a return statement. We know now that r0 contains the response to the command. For the 0x90 command (0x82C58), there are two places where it is called. In 0xB6100, it seems to be disposed of. In 0xC7752, 
+<br/>
+<pre>
+
 </pre>
 
 
-
-
 </p>
+
+
+
+
+
+
+
+
+
+
 
 
 

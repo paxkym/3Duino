@@ -161,19 +161,52 @@ Hooray! We found it! R0 is set to A0 and 90, which are both valid commands. Let 
 00087B64 BD70           	pop	{r4-r6,pc}
 </pre>
 <br/>
-Line 0x87B64 is a return statement. We know now that r0 contains the response to the command. For the 0x90 command (0x82C58), there are two places where it is called. In 0xB6100, it seems to be disposed of. In 0xC7752, 
+Line 0x87B64 is a return statement. We know now that r0 contains the response to the command. This means that once function 0x00087B14 is returned from, our response can be found in r0. We should therefore see what is done with this after the function call. Since right after the call which sends command 0x90 is a return, we must find where that function is called in the first place. Command 0x90 is function 0x00082C58. This is called twice: at 0x000B6100, and at 0x000C7752. Since the latter is very close to where the 0x71C93FE9BB0A3B18 command is sent, it makes sense to search there first, since this is probably the function which initializes talking to the gamecard. At 0x000C7752, the following is done (remember that after calling 0x00082C58, r0 has our response):
 <br/>
 <pre>
+000C7752 F7BB FA81     	bl	$00082C58
+000C7756 0007           	mov	r7,r0 ; Value of interest in is r7
+000C7758 1C40           	add	r0,r0,#1
+000C775A D00F           	beq	$000C777C ; I don't know when this would be called, so just ignore for now
+000C775C 2000           	mov	r0,#0
+000C775E 7128           	strb	r0,[r5,#&4]
+000C7760 7068           	strb	r0,[r5,#&1]
+000C7762 0038           	mov	r0,r7 // Value is now back in r0
+000C7764 F002 FA6E     	bl	$000C9C44 // This function seems to preserve r0
+000C7768 4943           	ldr	r1,[000C7878] 
+000C776A 0006           	mov	r6,r0 ; Value of interest is in r6 and r0
+000C776C 2801           	cmps	r0,#1 ; Compare to 1. This would never be equal to one
+000C776E 7008           	strb	r0,[r1]
+000C7770 D00A           	beq	$000C7788
+000C7772 2E02           	cmps	r6,#2
+000C7774 D008           	beq	$000C7788
+000C7776 2803           	cmps	r0,#3
+000C7778 D06D           	beq	$000C7856
+000C777A E057           	b	$000C782C
+000C777C A802           	add	r0,sp,#8
+000C777E F7F0 F9C2     	bl	$000B7B06
+000C7782 2007           	mov	r0,#7
+000C7784 B007           	add	sp,#&1C
+000C7786 BDF0           	pop	{r4-r7,pc}
 
 </pre>
 
+Remember that we are currently looking for when it is decided if the card is from a DS or 3DS. However, it may actually be more helpful if we instead look for where cryptography is rekeyed. This is because the cryptography rekeying requires that the two unknown variables are utilized. Let us now search for the 0x83 command. But wait! There is one more important thing I want to mention. In the above code segment, look again at lines 0xC7768-E:
+<br/>
+<pre>
+000C7768 4943           	ldr	r1,[000C7878] 
+000C776A 0006           	mov	r6,r0 ; Value of interest is in r6 and r0
+000C776C 2801           	cmps	r0,#1
+000C776E 7008           	strb	r0,[r1]
+</pre>
 
+R0 is being stored in a certain address to be used for later! A little bit of analysis shows that this address is 0x784e0918. This is referenced a very large number of times, however, so it might make more sense to follow the rekeying breadcrub trail first. There should be some function present which sends encrypted commands (which should be writing to 0x10004020).
 </p>
 
-
-
-
-
+<h3>A Breath of Fresh Air</h3>
+<p>
+Since writing the previous paragraph, I have been able to use Ghidra (which I was trying to do all along) to perform analysis, so I will be using the function notation FUN_[address]. This will hopefully make analysis easier. It would be most helpful to first figure out which function manages all of the commands being sent. The underlying function which sends the 0xA0 and 0x90 commands is FUN_000C7714. This was already sort of established. What I did not know is that the returned value from the 0x90 command is then passed into FUN_000c9c44. 
+</p>
 
 
 

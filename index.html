@@ -209,6 +209,8 @@ Since writing the previous paragraph, I have been able to use Ghidra (which I wa
 <div class="table-wrapper"><table><thead><tr><th align="left">Command</th><th align="left">Load address</th><th align="left">Effector function address</th></tr></thead><tbody><tr><td align="left">0x9F</td><td align="left">0x000c796c</td><td align="left">N/A (done directly)</td></tr><tr><td align="left">0xA0</td><td align="left">0x00087c1e</td><td align="left">0x00087b14</td></tr><tr><td align="left">0x90</td><td align="left">0x00082c5a</td><td align="left">0x00087b14</td></tr><tr><td align="left">0x3E</td><td align="left">0x000c77f8</td><td align="left">0x000c7454</td></tr><tr><td align="left">0x3F</td><td align="left">0x000c77ae</td><td align="left">0x000c7454</td></tr><tr><td align="left">0x71C93FE9BB0A3B18</td><td align="left">0x000c76b2 and 0x000c76b8</td><td align="left">N/A (done directly)</td></tr></tbody></table></div>
 <br/>
 The load address is where the command is loaded into a register, and the effector function address is the address of the function which sends the aforementioned command. There is no such thing as the "3F" command, so I do not know why it is there. Also notice that there is no 0x82 command. The goal here is to find where the cardsnowiv and rc4keyhalf variables are actually used. One potential entry point is to find where the S-Boxes are initialized for RC4. I could not find the S-Boxes precomputed in the file, so it would be most likely that it is computed on the fly. To find where this happens, we can first try looking for an xor by 0x63. 
+
+TODO: check FUN_000a4fb8 as a possible contender.
 </p>
 
 

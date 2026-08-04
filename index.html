@@ -208,11 +208,135 @@ R0 is being stored in a certain address to be used for later! A little bit of an
 Since writing the previous paragraph, I have been able to use Ghidra (which I was trying to do all along) to perform analysis, so I will be using the function notation FUN_[address]. This will hopefully make analysis easier. It would be most helpful to first figure out which function manages all of the commands being sent. The underlying function which sends the 0xA0 and 0x90 commands is FUN_000C7714. This was already sort of established. What I did not know is that the returned value from the 0x90 command is then passed into FUN_000c9c44. It is a bit hard to know what to look for in this function, so it is best to first look for the encryption initialization command. There do not appear to be any THUMB instructions where the CTRCARD CMD register is written to, or ARM instructions. This means that the 3DS may be sending 16-byte commands using the NTRCARD registers. If this is true, then we should find the 0x82 command being sent. This command is present in the in the 3DS set of commands, but not the DS. To make things easier, here is a chart of all of the different commands which are sent:
 <div class="table-wrapper"><table><thead><tr><th align="left">Command</th><th align="left">Load address</th><th align="left">Effector function address</th></tr></thead><tbody><tr><td align="left">0x9F</td><td align="left">0x000c796c</td><td align="left">N/A (done directly)</td></tr><tr><td align="left">0xA0</td><td align="left">0x00087c1e</td><td align="left">0x00087b14</td></tr><tr><td align="left">0x90</td><td align="left">0x00082c5a</td><td align="left">0x00087b14</td></tr><tr><td align="left">0x3E</td><td align="left">0x000c77f8</td><td align="left">0x000c7454</td></tr><tr><td align="left">0x3F</td><td align="left">0x000c77ae</td><td align="left">0x000c7454</td></tr><tr><td align="left">0x71C93FE9BB0A3B18</td><td align="left">0x000c76b2 and 0x000c76b8</td><td align="left">N/A (done directly)</td></tr></tbody></table></div>
 <br/>
-The load address is where the command is loaded into a register, and the effector function address is the address of the function which sends the aforementioned command. There is no such thing as the "3F" command, so I do not know why it is there. Also notice that there is no 0x82 command. The goal here is to find where the cardsnowiv and rc4keyhalf variables are actually used. One potential entry point is to find where the S-Boxes are initialized for RC4. I could not find the S-Boxes precomputed in the file, so it would be most likely that it is computed on the fly. To find where this happens, we can first try looking for an xor by 0x63. 
+The load address is where the command is loaded into a register, and the effector function address is the address of the function which sends the aforementioned command. There is no such thing as the "3F" command, so I do not know why it is there. Also notice that there is no 0x82 command. The goal here is to find where the cardsnowiv and rc4keyhalf variables are actually used. One potential entry point is to find where the S-Boxes are initialized for RC4. I could not find the S-Boxes precomputed in the file, so it would be most likely that it is computed on the fly. However, I could not find where this happens. It would then make sense to look back at the function which calls 0x90 and 0xA0. This is the function:
 <br/>
-I want to note that the 0xA0 command is not present for the DS, so it would make sense that the 0x90 command is sent first, then 0xA0. 
 
-TODO: check FUN_000a4fb8 as a possible contender. Also make note of return values of the main function.
+
+<pre>
+
+undefined1 FUN_000c7714(int param_1)
+
+{
+  undefined4 uVar1;
+  undefined1 uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  undefined4 local_28;
+  undefined1 local_24;
+  undefined4 local_20;
+  undefined4 local_1c;
+  
+  iVar6 = 0;
+  *(undefined4 *)(param_1 + 8) = 0;
+  *(undefined4 *)(param_1 + 0xc) = 0;
+  *(undefined1 *)(param_1 + 5) = 0xff;
+  local_28 = FUN_000b63a8();
+  FUN_000b7876();
+  *DAT_000c7870 = 0x10;
+  FUN_000b5118();
+  *(uint *)(DAT_000c7874 + 8) = *(uint *)(DAT_000c7874 + 8) &amp; 0xfffffffb;
+  FUN_000a4fb8(param_1,0xffffffff,0xffffffff);
+  iVar3 = FUN_00082c58();
+  if (iVar3 == -1) {
+    FUN_000b7b06(&amp;local_28);
+    return 7;
+  }
+  *(undefined1 *)(param_1 + 4) = 0;
+  *(undefined1 *)(param_1 + 1) = 0;
+  iVar4 = FUN_000c9c44(iVar3);
+  *DAT_000c7878 = (char)iVar4;
+  if ((iVar4 != 1) &amp;&amp; (iVar4 != 2)) {
+    if (iVar4 == 3) {
+      uVar2 = 3;
+      goto LAB_000c784c;
+    }
+    goto LAB_000c782c;
+  }
+  iVar6 = FUN_00087c1c();
+  if (iVar6 == -1) {
+LAB_000c785a:
+    FUN_000b3214();
+    uVar2 = 7;
+    *DAT_000c7870 = 0x10;
+  }
+  else {
+    FUN_000a4fb8(param_1,iVar3,iVar6);
+    iVar5 = DAT_000c787c;
+    if (iVar4 == 2) {
+      *(undefined1 *)(param_1 + 4) = 1;
+      *(undefined4 *)(iVar5 + 0xc) = 1;
+      iVar4 = FUN_000c7454(0x3f);
+      if ((iVar4 != 0) &amp;&amp; (iVar4 = FUN_000c763c(param_1,iVar6), uVar1 = DAT_000c7880, iVar4 != 0)) {
+        local_24 = 0x21;
+        *DAT_000c7870 = 0x21;
+        local_20 = uVar1;
+        local_1c = 0;
+        FUN_000b699a(uVar1,0);
+        goto LAB_000c782c;
+      }
+      goto LAB_000c785a;
+    }
+    if (iVar4 != 1) {
+LAB_000c782c:
+      iVar4 = FUN_000b2b46(param_1);
+      iVar5 = FUN_00087c26(param_1);
+      if ((iVar4 == iVar3) &amp;&amp; (iVar5 == iVar6)) {
+        FUN_00084c74(param_1);
+        uVar2 = *DAT_000c7878;
+        goto LAB_000c784c;
+      }
+      goto LAB_000c785a;
+    }
+    if ((iVar6 &lt;&lt; 0x10 &lt; 0) &amp;&amp; (iVar4 = FUN_00155300(), iVar4 != 0)) {
+      uVar2 = 1;
+    }
+    else {
+      uVar2 = 0;
+    }
+    *(undefined1 *)(param_1 + 1) = uVar2;
+    iVar4 = FUN_000c7454(0x3e);
+    if (iVar4 == 0) goto LAB_000c785a;
+    FUN_000b2a44();
+    local_24 = 0x20;
+    *DAT_000c7870 = 0x20;
+    if (*(char *)(param_1 + 1) == &#39;\0&#39;) {
+      iVar4 = FUN_000c74ac(param_1,iVar6);
+      if (iVar4 != 0) goto LAB_000c782c;
+      goto LAB_000c785a;
+    }
+    uVar2 = 1;
+  }
+  *DAT_000c7878 = uVar2;
+LAB_000c784c:
+  FUN_000b7b06(&amp;local_28);
+  return uVar2;
+}
+  
+</pre>
+I know that it is a bit of a handful, but I will break it down. Take a look at this section first:
+<pre>
+  iVar3 = FUN_00082c58();
+  if (iVar3 == -1) {
+    FUN_000b7b06(&amp;local_28);
+    return 7;
+  }
+  *(undefined1 *)(param_1 + 4) = 0;
+  *(undefined1 *)(param_1 + 1) = 0;
+  iVar4 = FUN_000c9c44(iVar3);
+  *DAT_000c7878 = (char)iVar4;
+  if ((iVar4 != 1) && (iVar4 != 2)) {
+    if (iVar4 == 3) {
+      uVar2 = 3;
+      goto LAB_000c784c;
+    }
+    goto LAB_000c782c;
+  }
+</pre>
+
+First, iVar3 is set to the ID1, which in this case is 0x9000FEC2. It is checked against -1, which I assume would mean that there is no response. In our case, the if statement is false, so the next line calls FUN_000c9c44. After further analysis, it is simply impossible to get anything done without knowing what memory address contains what we want. We need to find where the encryption process occurs. It may be helpful to first look for where the titlekeys are derived. These use part of the header, so it makes sense that we should first look for where the header is used. That's where the 0x82 command is sent, but we don't know where that is yet since the CTRCARD CMD register seems to never be written to. But it does not make sense that Nintendo would implement a register without ever using it. The only possible reason for no being able to find where the register is written to (Address 0x10004020) is that our tools cannot find it. The most logical choice would be to find where the base address (0x10004000) is accessed, and then do some more analysis to find where this is offset and written to. Luckily enough, there are three addresses equal to 0x10004030. Remember that ARM32 cannot have 32-bit immediates, so it must store 32-bit address constants in a memory address, and then access them later. It turns out that whenever I searched for 0x10005030, all instances of 0x10004030 also came up, but they were misinterpreted as the former. I have no idea why this is, but I have now realized that this seems to be known in the 3DBrew documentation (it says CTRCARD registers are 0x10004000/0x10005000). I have a theory that encrypted commands are sent via the 0x10005000 registers instead of 0x10004000. If that is the case, here are the locations of the commands sent:
+
 </p>
 
 

@@ -1,5 +1,11 @@
 # 3Duino
-Bit bang a 3DS cartridge using a microcontroller. This is, to my knowledge, the only published attempt at programatically extracting the ROM data of a 3DS gamecard. Documentation about functionality can be found at [this site](https://paxkym.github.io/3Duino/). Usage instructions are found here.
+Bit bang a 3DS cartridge using a microcontroller. This is, to my knowledge, the only published attempt at programmatically extracting the ROM data of a 3DS gamecard. 
+
+The main purpose of this project is to figure out the complete 3DS gamecard protocol. I am doing this based off of a series of die shots. As of now, I only have the very top layer, which is in (this Google Drive file)[https://drive.google.com/file/d/16eykgb24jz9NoaT3B1qGHCNiuC40coXf/view?usp=sharing] (each pixel is 300 nanometers)
+
+
+<!--
+Documentation about functionality can be found at [this site](https://paxkym.github.io/3Duino/). Usage instructions are found here.
 
 ### Usage
 > Step 1: Attach the gamecard to the microcontroller
@@ -31,4 +37,5 @@ Upload the ino file to your microcontroller.
 > Step 3: Set up the program
 
 Download the Java program, and use.
+-->
 
